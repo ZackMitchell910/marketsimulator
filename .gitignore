@@ -1,0 +1,49 @@
+# Bytecode & interpreter caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Testing & coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+
+# IDE & editor folders
+.idea/
+.vscode/
+*.suo
+*.user
+*.swp
+.DS_Store
+Thumbs.db
+
+# Project artifacts
+runs/
+data_cache/
+forecast.json
+*.duckdb
+*.sqlite3
+logs/
+
+# Secrets & local configs
+key
+*.env
+*.env.*
+
+# Misc
+*.log
+*.tmp
+*.bak
+*.ipynb_checkpoints/
