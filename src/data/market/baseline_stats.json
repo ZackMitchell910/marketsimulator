@@ -1,0 +1,11 @@
+[
+  {"symbol": "NVDA", "avg_drift_positive": 0.035, "avg_drift_negative": -0.028, "volatility": 0.045, "adv": 42000000},
+  {"symbol": "AMD", "avg_drift_positive": 0.028, "avg_drift_negative": -0.024, "volatility": 0.05, "adv": 58000000},
+  {"symbol": "TSLA", "avg_drift_positive": 0.03, "avg_drift_negative": -0.03, "volatility": 0.055, "adv": 140000000},
+  {"symbol": "IWM", "avg_drift_positive": 0.012, "avg_drift_negative": -0.011, "volatility": 0.02, "adv": 28000000},
+  {"symbol": "SPY", "avg_drift_positive": 0.008, "avg_drift_negative": -0.007, "volatility": 0.015, "adv": 80000000},
+  {"symbol": "QQQ", "avg_drift_positive": 0.01, "avg_drift_negative": -0.009, "volatility": 0.018, "adv": 41000000},
+  {"symbol": "XLF", "avg_drift_positive": 0.009, "avg_drift_negative": -0.008, "volatility": 0.016, "adv": 32000000},
+  {"symbol": "XLE", "avg_drift_positive": 0.011, "avg_drift_negative": -0.009, "volatility": 0.02, "adv": 28000000},
+  {"symbol": "CAT", "avg_drift_positive": 0.018, "avg_drift_negative": -0.016, "volatility": 0.03, "adv": 3500000}
+]

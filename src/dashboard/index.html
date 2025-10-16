@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en" class="bp5-dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>MarketTwin Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <!-- Blueprint (Palantir) styles -->
+    <link href="https://unpkg.com/@blueprintjs/core@5/lib/css/blueprint.css" rel="stylesheet" />
+    <link href="https://unpkg.com/@blueprintjs/icons@5/lib/css/blueprint-icons.css" rel="stylesheet" />
+
+    <!-- TradingView Lightweight Charts (for fast OHLC+volume) -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+
+    <link href="./app.css" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Top bar -->
+    <nav class="bp5-navbar bp5-dark topbar">
+      <div class="bp5-navbar-group bp5-align-left">
+        <div class="bp5-navbar-heading">Simetrix Dash</div>
+        <span class="bp5-navbar-divider"></span>
+        <span class="muted">Deep market intelligence &middot; carbon glass interface</span>
+      </div>
+      <div class="bp5-navbar-group bp5-align-right">
+        <button id="refreshMetricsBtn" class="bp5-button bp5-minimal" title="Refresh metrics">
+          <span class="bp5-icon bp5-icon-dashboard"></span>
+          Metrics
+        </button>
+        <a href="/health" target="_blank" class="bp5-button bp5-minimal" title="API health">
+          <span class="bp5-icon bp5-icon-heart"></span>
+          Health
+        </a>
+        <a href="/" class="bp5-button bp5-minimal"><span class="bp5-icon bp5-icon-home"></span> API</a>
+      </div>
+    </nav>
+
+    <div class="workspace">
+      <div class="primary-grid">
+        <section class="card hero-card" id="scenarioSummaryCard">
+          <div class="hero-header">
+            <span class="hero-eyebrow">Scenario Console</span>
+            <h2 id="scenarioHeadline">Awaiting scenario input</h2>
+          </div>
+          <p id="summaryNarrative" class="hero-narrative">
+            Describe a macro event and run a simulation to see how agents respond.
+          </p>
+          <div class="hero-meta">
+            <div class="meta-block">
+              <label>Last run</label>
+              <span id="summaryGenerated">--</span>
+            </div>
+            <div class="meta-block">
+              <label>Positive shocks</label>
+              <span id="summaryPositive">--</span>
+            </div>
+            <div class="meta-block">
+              <label>Negative shocks</label>
+              <span id="summaryNegative">--</span>
+            </div>
+            <div class="meta-block">
+              <label>Bias</label>
+              <span id="summaryBias">--</span>
+            </div>
+          </div>
+          <div class="bias-wrapper">
+            <div class="bias-header">
+              <span>Bias gauge</span>
+              <span id="biasGaugeLabel" class="bias-value">Neutral</span>
+            </div>
+            <div class="bias-gauge">
+              <div class="bias-gauge-track">
+                <div class="bias-gauge-fill" id="biasGaugeFill"></div>
+              </div>
+              <div class="bias-gauge-pointer" id="biasGaugePointer"></div>
+            </div>
+          </div>
+          <div class="summary-tabs" role="tablist">
+            <button
+              class="summary-tab is-active"
+              type="button"
+              id="summaryTabOverview"
+              role="tab"
+              aria-selected="true"
+              aria-controls="summaryPanelOverview"
+              data-summary-tab="overview"
+            >
+              Overview
+            </button>
+            <button
+              class="summary-tab"
+              type="button"
+              id="summaryTabOrders"
+              role="tab"
+              aria-selected="false"
+              aria-controls="summaryPanelOrders"
+              data-summary-tab="orders"
+            >
+              Orders
+            </button>
+            <button
+              class="summary-tab"
+              type="button"
+              id="summaryTabDistribution"
+              role="tab"
+              aria-selected="false"
+              aria-controls="summaryPanelDistribution"
+              data-summary-tab="distribution"
+            >
+              Distribution
+            </button>
+          </div>
+          <div class="summary-panels">
+            <div
+              class="summary-panel is-active"
+              id="summaryPanelOverview"
+              role="tabpanel"
+              aria-labelledby="summaryTabOverview"
+              data-summary-panel="overview"
+            ></div>
+            <div
+              class="summary-panel"
+              id="summaryPanelOrders"
+              role="tabpanel"
+              aria-labelledby="summaryTabOrders"
+              data-summary-panel="orders"
+            ></div>
+            <div
+              class="summary-panel"
+              id="summaryPanelDistribution"
+              role="tabpanel"
+              aria-labelledby="summaryTabDistribution"
+              data-summary-panel="distribution"
+            ></div>
+          </div>
+        </section>
+
+        <section class="card signals-card">
+          <div class="signals-header">
+            <span class="bp5-icon bp5-icon-predictive-analysis"></span>
+            Shock Ladder
+          </div>
+          <div class="signals-grid">
+            <div class="signal-column">
+              <h4>Positive</h4>
+              <ul id="positiveList">
+                <li class="empty">No scenario yet.</li>
+              </ul>
+            </div>
+            <div class="signal-column">
+              <h4>Negative</h4>
+              <ul id="negativeList">
+                <li class="empty">No scenario yet.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="layout">
+        <!-- Left: Scenario panel -->
+        <aside class="side">
+          <div class="bp5-card bp5-elevation-2 card control-card">
+            <h3 class="card-title">
+              <span class="bp5-icon bp5-icon-predictive-analysis"></span>
+              Scenario Controls
+            </h3>
+            <label class="bp5-label">
+              Free-form text description
+              <textarea
+                id="scenarioText"
+                class="bp5-input bp5-fill"
+                rows="7"
+                spellcheck="false"
+                placeholder="Example: Fed surprise hike +50 bps, tech risk-off, energy bid..."
+              ></textarea>
+            </label>
+
+            <div class="control-grid">
+              <label class="bp5-label">
+                Steps (5&ndash;120)
+                <input id="scenarioSteps" class="bp5-input" type="number" min="5" max="120" step="5" value="20" />
+              </label>
+              <label class="bp5-label">
+                Auto-scroll feed
+                <span class="switch-holder">
+                  <input id="autoScrollLive" type="checkbox" checked />
+                  <span class="switch-indicator"></span>
+                </span>
+              </label>
+              <label class="bp5-label">
+                Dark mode
+                <span class="switch-holder">
+                  <input id="darkMode" type="checkbox" checked />
+                  <span class="switch-indicator"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="bp5-control-group bp5-fill">
+              <button id="runBtn" class="bp5-button bp5-intent-primary bp5-icon-play">Run scenario</button>
+              <button id="clearBtn" class="bp5-button bp5-icon-eraser">Clear</button>
+            </div>
+
+            <div id="runStatus" class="bp5-text-muted small mt8"></div>
+          </div>
+        </aside>
+
+        <!-- Right: Main content -->
+        <main class="main">
+          <section class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><span class="bp5-icon bp5-icon-trending-up"></span> Agent Responses</h3>
+              <span id="generatedAt" class="bp5-tag bp5-minimal"></span>
+            </div>
+            <div id="impacts" class="grid"></div>
+            <div id="impactsEmpty" class="bp5-callout bp5-icon-info-sign is-hidden">
+              No scenario results yet. Enter a description and click <strong>Run scenario</strong>.
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><span class="bp5-icon bp5-icon-feed"></span> Live Feed</h3>
+              <div>
+                <button id="refreshRecentBtn" class="bp5-button bp5-small bp5-minimal bp5-icon-refresh">Refresh</button>
+              </div>
+            </div>
+            <div id="recent" class="feed"></div>
+            <div id="recentEmpty" class="bp5-callout bp5-icon-time is-hidden">
+              Waiting for events&hellip; (POST to <code>/ingest</code> to push snapshots/fills).
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h3 class="panel-title"><span class="bp5-icon bp5-icon-dashboard"></span> Metrics</h3>
+              <div>
+                <button id="downloadMetricsBtn" class="bp5-button bp5-small bp5-minimal bp5-icon-download">
+                  Download JSON
+                </button>
+              </div>
+            </div>
+            <pre id="metrics" class="metrics-pre"></pre>
+            <div id="metricsEmpty" class="bp5-callout bp5-icon-help is-hidden">
+              No <code>metrics.json</code> found under <code>runs/**/</code>.
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- Toasts -->
+    <div id="toaster" class="toaster"></div>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

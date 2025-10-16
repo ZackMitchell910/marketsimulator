@@ -301,6 +301,75 @@
       transform: none;
     }
 
+    .btn-secondary {
+      border-radius: 0.6rem;
+      padding: 0.45rem 1.05rem;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.08);
+      color: var(--fg);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+
+    .btn-secondary:hover,
+    .btn-secondary:focus-visible {
+      background: rgba(255,255,255,0.14);
+      border-color: rgba(255,255,255,0.24);
+      transform: translateY(-1px);
+    }
+
+    .event-card {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .event-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .event-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .event-controls input {
+      width: 118px;
+      padding: 0.45rem 0.75rem;
+      border-radius: 0.6rem;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.6);
+      color: var(--fg);
+      font-size: 13px;
+    }
+
+    .event-controls input:focus {
+      outline: none;
+      border-color: rgba(159,252,255,0.5);
+      box-shadow: 0 0 0 1px rgba(159,252,255,0.35);
+    }
+
+    .event-log {
+      margin: 0;
+      padding: 14px;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.55);
+      max-height: 260px;
+      overflow: auto;
+      font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
     .results-grid {
       display: grid;
       gap: 20px;
@@ -480,7 +549,7 @@
         <section class="workspace">
           <article class="card" id="scenario-input">
             <label for="scenarioText">Scenario brief</label>
-            <textarea id="scenarioText" placeholder="For example: What happens if we go to war with Mexico?"></textarea>
+            <textarea id="scenarioText" placeholder="For example: What happens if NVIDIA misses earnings?"></textarea>
             <div class="controls">
               <div class="status" id="status"></div>
               <button id="runBtn" class="btn-run">Run Simulation</button>
@@ -492,6 +561,17 @@
             <div id="results" class="results-grid">
               <p class="placeholder">Projected impacts will appear here after you run a scenario.</p>
             </div>
+          </article>
+
+          <article class="card event-card" id="live-events">
+            <div class="event-header">
+              <label for="runIdInput">Live events</label>
+              <div class="event-controls">
+                <input id="runIdInput" type="text" value="demo" aria-label="Run identifier" />
+                <button id="eventConnectBtn" class="btn-secondary">Connect</button>
+              </div>
+            </div>
+            <pre id="eventLog" class="event-log">Connect to a run to see streaming events.</pre>
           </article>
         </section>
 
@@ -507,6 +587,13 @@
   const textArea = document.getElementById("scenarioText");
   const results = document.getElementById("results");
   const status = document.getElementById("status");
+  const runIdInput = document.getElementById("runIdInput");
+  const eventConnectBtn = document.getElementById("eventConnectBtn");
+  const eventLog = document.getElementById("eventLog");
+
+  let eventSource = null;
+  let reconnectTimer = null;
+  const eventLogLines = [];
 
   function renderResults(data) {
     results.innerHTML = "";
@@ -581,6 +668,79 @@
     });
   }
 
+  function formatNumber(value, digits = 2) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num.toFixed(digits) : String(value ?? "");
+  }
+
+  function summarizeEvent(event) {
+    if (!event || typeof event !== "object") {
+      return "event " + String(event);
+    }
+    const type = (event.type || "event").toString().toUpperCase();
+    if (event.type === "tick") {
+      return `${type} ${event.symbol ?? ""} @ ${formatNumber(event.price)}`;
+    }
+    if (event.type === "order") {
+      return `${type} ${event.side ?? ""} ${event.symbol ?? ""} qty ${formatNumber(event.qty)} limit ${formatNumber(event.limit ?? event.price)}`;
+    }
+    if (event.type === "trade") {
+      return `${type} ${event.symbol ?? ""} qty ${formatNumber(event.qty)} @ ${formatNumber(event.price)}`;
+    }
+    if (event.type === "position") {
+      return `${type} ${event.symbol ?? ""} qty ${formatNumber(event.qty)} pnl ${formatNumber(event.pnl)}`;
+    }
+    return `${type} ${JSON.stringify(event)}`;
+  }
+
+  function appendEventLine(message) {
+    if (!eventLog) {
+      return;
+    }
+    const timestamp = new Date().toLocaleTimeString();
+    eventLogLines.push(`${timestamp} ${message}`);
+    if (eventLogLines.length > 60) {
+      eventLogLines.shift();
+    }
+    eventLog.textContent = eventLogLines.join("\n");
+    eventLog.scrollTop = eventLog.scrollHeight;
+  }
+
+  function connectEventStream(runId) {
+    if (!eventLog) {
+      return;
+    }
+    const target = runId && runId.trim() ? runId.trim() : "demo";
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    eventLogLines.length = 0;
+    appendEventLine(`subscribing to run ${target}`);
+    eventSource = new EventSource(`/events?run_id=${encodeURIComponent(target)}`);
+    eventSource.onopen = () => appendEventLine("stream connected");
+    eventSource.onmessage = (evt) => {
+      try {
+        const data = JSON.parse(evt.data);
+        appendEventLine(summarizeEvent(data));
+      } catch (error) {
+        appendEventLine("received unparseable event");
+      }
+    };
+    eventSource.onerror = () => {
+      appendEventLine("stream interrupted, retrying…");
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      reconnectTimer = setTimeout(() => connectEventStream(target), 3000);
+    };
+  }
+
   async function runScenario() {
     const text = textArea.value.trim();
     if (!text) {
@@ -619,6 +779,28 @@
   textArea.addEventListener("keydown", (evt) => {
     if (evt.ctrlKey && evt.key === "Enter") {
       runScenario();
+    }
+  });
+
+  if (eventConnectBtn && runIdInput) {
+    eventConnectBtn.addEventListener("click", () => {
+      connectEventStream(runIdInput.value || "demo");
+    });
+    runIdInput.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter") {
+        evt.preventDefault();
+        connectEventStream(runIdInput.value || "demo");
+      }
+    });
+    connectEventStream(runIdInput.value || "demo");
+  }
+
+  window.addEventListener("beforeunload", () => {
+    if (eventSource) {
+      eventSource.close();
+    }
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
     }
   });
   </script>

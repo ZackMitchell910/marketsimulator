@@ -1,15 +1,25 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Any, Dict, Literal, Optional
 
-Side = Literal["BUY", "SELL"]
+OrderSide = Literal["BUY", "SELL"]
+Side = OrderSide  # Backwards compatibility alias
+OrderType = Literal["LMT", "MKT", "IOC", "STOP", "STOP_LIMIT", "TRAIL", "MIT"]
+TimeInForce = Literal["DAY", "IOC", "GTC", "FOK"]
 
 @dataclass
 class Order:
     agent_id: str
-    side: Side
+    side: OrderSide
     qty: float  # positive size
     price_limit: Optional[float] = None  # optional limit price
+    symbol: Optional[str] = None  # optional instrument identifier
+    order_type: OrderType = "MKT"
+    time_in_force: Optional[TimeInForce] = None
+    stage: Optional[str] = None
+    condition: Optional[str] = None
+    trigger: Optional[float] = None
+    meta: Optional[Dict[str, Any]] = None
 
 @dataclass
 class Position:
@@ -23,7 +33,7 @@ class Position:
 @dataclass
 class Fill:
     agent_id: str
-    side: Side
+    side: OrderSide
     qty: float
     price: float
 

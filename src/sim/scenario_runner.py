@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -19,18 +19,13 @@ class ScenarioResult:
 
 
 class ScenarioRunner:
-    """
-    Deterministic helper that projects synthetic candles forward in time based on
-    a drift/volatility specification. Used by the dashboard to visualise potential
-    future paths.
-    """
+    """Project synthetic candles forward based on calibrated drift/vol/skew."""
 
     def __init__(self, seed: Optional[int] = None):
         self._rng = np.random.default_rng(seed)
         self._base: Optional[pd.DataFrame] = None
         self._history: List[ScenarioResult] = []
 
-    # ------------------------------------------------------------------ public
     def bootstrap(self, candles: pd.DataFrame) -> None:
         if candles is None or candles.empty:
             raise ValueError("Bootstrap data must contain at least one candle")
@@ -65,12 +60,21 @@ class ScenarioRunner:
             freq = pd.Timedelta(minutes=1)
         current_ts = base.index[-1]
 
+        skew = float(params.get("skew", 0.0))
+        kurtosis = float(params.get("kurtosis", 3.0))
+
         prices = []
         price = last_close
         for _ in range(steps):
             shock = drift
             if vol:
-                shock += float(self._rng.normal(0.0, vol))
+                noise = float(self._rng.normal(0.0, vol))
+                if kurtosis > 3.0:
+                    tail = abs(self._rng.normal()) * (kurtosis - 3.0) * 0.1
+                    noise *= 1.0 + tail
+                if skew:
+                    noise += np.sign(noise or 1.0) * abs(skew) * vol * 0.2
+                shock += noise
             price = max(0.0, price * (1.0 + shock))
             prices.append(price)
 
@@ -109,4 +113,3 @@ class ScenarioRunner:
         if limit is None or limit >= len(self._history):
             return list(self._history)
         return list(self._history[-limit:])
-
