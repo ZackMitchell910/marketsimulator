@@ -433,6 +433,9 @@ def run_scenario(req: ScenarioRequest, request: Request) -> Dict[str, Any]:
                 "current_price": float(impact.current_price),
                 "orders": orders,
                 "projection": projection,
+                "analogs": impact.analogs,
+                "analog_metrics": impact.analog_metrics,
+                "news": impact.news,
             }
         )
 

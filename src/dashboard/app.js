@@ -1,4 +1,4 @@
-﻿/* MarketTwin dashboard controller
+ï»¿/* MarketTwin dashboard controller
  * Works against FastAPI endpoints exposed in src/api/main.py.
  */
 
@@ -147,6 +147,13 @@ function formatPercent(value, digits = 1) {
   return `${sign}${(num * 100).toFixed(digits)}%`;
 }
 
+function formatDate(value) {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
 function setBiasGauge(value) {
   const numeric = Number.isFinite(value) ? value : 0;
   const clamped = Math.max(-1, Math.min(1, numeric));
@@ -236,18 +243,21 @@ function createSparklineSvg(points, baselinePrice) {
   </svg>`;
 }
 
+
 function renderSummaryPanels(payload) {
   const overviewPanel = q('[data-summary-panel="overview"]');
   const ordersPanel = q('[data-summary-panel="orders"]');
   const distributionPanel = q('[data-summary-panel="distribution"]');
-  if (!overviewPanel || !ordersPanel || !distributionPanel) return;
+  const analogPanel = q('[data-summary-panel="analogs"]');
+  if (!overviewPanel || !ordersPanel || !distributionPanel || !analogPanel) return;
 
   if (!payload || !Array.isArray(payload.impacts) || payload.impacts.length === 0) {
     const empty = '<p class="summary-empty">Run a simulation to populate this view.</p>';
     overviewPanel.innerHTML = empty;
     ordersPanel.innerHTML = empty;
     distributionPanel.innerHTML = empty;
-    setSummaryTab("overview");
+    analogPanel.innerHTML = empty;
+    setSummaryTab('overview');
     return;
   }
 
@@ -291,11 +301,11 @@ function renderSummaryPanels(payload) {
     <ul class="summary-list">
       <li>
         <span class="label">Leaders</span>
-        <span>${topPositives.length ? topPositives.map((item) => `${escapeHtml(item.ticker)} ${formatScore(item.score)}`).join(", ") : "None"}</span>
+        <span>${topPositives.length ? topPositives.map((item) => `${escapeHtml(item.ticker)} ${formatScore(item.score)}`).join(', ') : 'None'}</span>
       </li>
       <li>
         <span class="label">Laggards</span>
-        <span>${topNegatives.length ? topNegatives.map((item) => `${escapeHtml(item.ticker)} ${formatScore(item.score)}`).join(", ") : "None"}</span>
+        <span>${topNegatives.length ? topNegatives.map((item) => `${escapeHtml(item.ticker)} ${formatScore(item.score)}`).join(', ') : 'None'}</span>
       </li>
     </ul>
   `;
@@ -319,17 +329,17 @@ function renderSummaryPanels(payload) {
     const rows = [
       `<div class="summary-row header"><div>Ticker</div><div>Leg</div><div>Qty</div><div>Order</div></div>`,
       ...topOrders.map((order) => {
-        const sideClass = order.side === "BUY" ? "side-buy" : "side-sell";
-        const stage = order.stage ? escapeHtml(order.stage) : order.condition ? escapeHtml(order.condition) : "-";
-        const orderLabel = [order.order_type, order.time_in_force].filter(Boolean).join(" · ");
+        const sideClass = order.side === 'BUY' ? 'side-buy' : 'side-sell';
+        const stage = order.stage ? escapeHtml(order.stage) : order.condition ? escapeHtml(order.condition) : '-';
+        const orderLabel = [order.order_type, order.time_in_force].filter(Boolean).join(' · ');
         return `<div class="summary-row">
-          <div>${escapeHtml(order.ticker || "")}</div>
+          <div>${escapeHtml(order.ticker || '')}</div>
           <div>${escapeHtml(stage)}</div>
           <div class="qty ${sideClass}">${formatNumber(order.qty || 0, 0)}</div>
-          <div>${escapeHtml(orderLabel || "-")}</div>
+          <div>${escapeHtml(orderLabel || '-')}</div>
         </div>`;
       }),
-    ].join("");
+    ].join('');
     ordersPanel.innerHTML = `<div class="summary-table">${rows}</div>`;
   } else {
     ordersPanel.innerHTML = '<p class="summary-empty">No order detail available.</p>';
@@ -343,13 +353,13 @@ function renderSummaryPanels(payload) {
 
   const baselineRange = baselineValues.length
     ? `${formatPrice(Math.min(...baselineValues))} → ${formatPrice(Math.max(...baselineValues))}`
-    : "--";
+    : '--';
   const projectedRange = projectedValues.length
     ? `${formatPrice(Math.min(...projectedValues))} → ${formatPrice(Math.max(...projectedValues))}`
-    : "--";
+    : '--';
   const distributionRange = projectionCloses.length
     ? `${formatPrice(Math.min(...projectionCloses))} → ${formatPrice(Math.max(...projectionCloses))}`
-    : "--";
+    : '--';
 
   distributionPanel.innerHTML = `
     <div class="summary-grid">
@@ -368,547 +378,135 @@ function renderSummaryPanels(payload) {
     </div>
   `;
 
+  const analogPool = [];
+  const analogMetricList = [];
+  const newsMap = new Map();
+  const analogSeen = new Set();
+
+  impacts.forEach((impact) => {
+    const tickerUpper = (impact.ticker || '').toUpperCase();
+    const analogs = Array.isArray(impact.analogs) ? impact.analogs : [];
+    analogs.forEach((analog) => {
+      const key = `${tickerUpper}:${analog.id || analog.title || analog.date || analog.category || analog.summary || analog.similarity}`;
+      if (analogSeen.has(key)) return;
+      analogSeen.add(key);
+      analogPool.push({
+        ticker: tickerUpper,
+        ...analog,
+        similarity: Number(analog.similarity ?? 0),
+      });
+    });
+    if (impact.analog_metrics) {
+      analogMetricList.push({ ticker: tickerUpper, metrics: impact.analog_metrics });
+    }
+    const newsItems = Array.isArray(impact.news) ? impact.news : [];
+    newsItems.forEach((item) => {
+      const url = item?.url || item?.article_url || item?.link;
+      if (!url || newsMap.has(url)) return;
+      newsMap.set(url, {
+        title: item.title || url,
+        url,
+        source: item.source,
+        published: item.published || item.published_utc,
+      });
+    });
+  });
+
+  analogPool.sort((a, b) => (b.similarity ?? 0) - (a.similarity ?? 0));
+
+  const aggregate = { drift: 0, vol: 0, skew: 0, kurtosis: 0, weight: 0 };
+
+  analogMetricList.forEach(({ metrics }) => {
+    if (!metrics) return;
+    const weight = Math.max(1, Number(metrics.sample_size) || 1);
+    aggregate.drift += Number(metrics.drift_avg || 0) * weight;
+    aggregate.vol += Number(metrics.vol_avg || 0) * weight;
+    aggregate.skew += Number(metrics.skew_avg || 0) * weight;
+    aggregate.kurtosis += Number(metrics.kurtosis_avg || 0) * weight;
+    aggregate.weight += weight;
+  });
+
+  if (aggregate.weight === 0 && analogPool.length) {
+    analogPool.forEach((analog) => {
+      aggregate.drift += Number(analog.drift || 0);
+      aggregate.vol += Number(analog.vol || 0);
+      aggregate.skew += Number(analog.skew || 0);
+      aggregate.kurtosis += Number(analog.kurtosis || 3);
+    });
+    aggregate.weight = analogPool.length;
+  }
+
+  const avgDrift = aggregate.weight ? aggregate.drift / aggregate.weight : 0;
+  const avgVol = aggregate.weight ? aggregate.vol / aggregate.weight : 0;
+  const avgSkew = aggregate.weight ? aggregate.skew / aggregate.weight : 0;
+  const avgKurt = aggregate.weight ? aggregate.kurtosis / aggregate.weight : 3;
+  const sampleSize = Math.round(aggregate.weight) || 0;
+
+  const analogHeader = `<div class="summary-row header analog-row"><div>Ticker</div><div>Event</div><div>Drift</div><div>Similarity</div><div>Source</div></div>`;
+  const analogRows = analogPool.slice(0, 6).map((analog) => {
+    const tagHtml = Array.isArray(analog.tags) && analog.tags.length
+      ? `<div class="analog-tags">${analog.tags.slice(0, 4).map((tag) => `<span>${escapeHtml(tag)}</span>`).join('')}</div>`
+      : '';
+    const newsUrl = Array.isArray(analog.news) && analog.news.length ? analog.news[0] : null;
+    const newsLink = newsUrl
+      ? `<a class="analog-link" href="${escapeHtml(newsUrl)}" target="_blank" rel="noopener">Link</a>`
+      : '—';
+    const similarity = Number.isFinite(analog.similarity) ? formatNumber(analog.similarity, 2) : formatNumber(0, 2);
+    return `<div class="summary-row analog-row">
+      <div>${escapeHtml(analog.ticker || '')}</div>
+      <div>
+        <div class="analog-meta">
+          <strong>${escapeHtml(analog.title || analog.id || analog.category || 'Analog event')}</strong>
+          <span>${formatDate(analog.date)}</span>
+        </div>
+        ${tagHtml}
+      </div>
+      <div>${formatPercent(analog.drift ?? 0)}</div>
+      <div>${similarity}</div>
+      <div>${newsLink}</div>
+    </div>`;
+  });
+
+  const newsItems = Array.from(newsMap.values()).slice(0, 4);
+  const newsHtml = newsItems.length
+    ? `<div class="analog-news"><h5>Recent headlines</h5><ul class="analog-news-list">${newsItems
+        .map((item) => {
+          const source = item.source ? `${escapeHtml(item.source)} · ` : '';
+          return `<li>${source}<a class="analog-link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(item.title)}</a> (${formatDate(item.published)})</li>`;
+        })
+        .join('')}</ul></div>`
+    : '';
+
+  const analogRowsHtml = analogPool.length
+    ? `<div class="summary-analog-list">${[analogHeader, ...analogRows].join('')}</div>`
+    : '<p class="summary-empty">No analog events matched yet.</p>';
+
+  analogPanel.innerHTML = `
+    <div class="summary-grid">
+      <div class="summary-grid-item">
+        <strong>Avg drift</strong>
+        <span>${formatPercent(avgDrift)}</span>
+      </div>
+      <div class="summary-grid-item">
+        <strong>Avg vol</strong>
+        <span>${formatPercent(avgVol)}</span>
+      </div>
+      <div class="summary-grid-item">
+        <strong>Avg skew</strong>
+        <span>${formatNumber(avgSkew, 2)}</span>
+      </div>
+      <div class="summary-grid-item">
+        <strong>Avg kurtosis</strong>
+        <span>${formatNumber(avgKurt, 2)}</span>
+      </div>
+    </div>
+    <p class="summary-meta">Sample size: ${sampleSize}</p>
+    ${analogRowsHtml}
+    ${newsHtml}
+  `;
+
   setSummaryTab(activeSummaryTab);
 }
-
-
-function summarizeEvent(event) {
-  if (!event || typeof event !== "object") return String(event);
-  const type = (event.type || "event").toString().toUpperCase();
-  const symbol = event.symbol || "";
-  if (event.type === "tick") {
-    return `${type} ${symbol} @ ${formatNumber(event.price)}`;
-  }
-  if (event.type === "order") {
-    return `${type} ${event.side || ""} ${symbol} qty ${formatNumber(event.qty)} limit ${formatNumber(
-      event.limit ?? event.price_limit ?? event.price,
-    )}`;
-  }
-  if (event.type === "trade") {
-    return `${type} ${symbol} qty ${formatNumber(event.qty)} @ ${formatNumber(event.price)}`;
-  }
-  if (event.type === "position") {
-    return `${type} ${symbol} qty ${formatNumber(event.qty)} pnl ${formatNumber(event.pnl)}`;
-  }
-  return `${type} ${JSON.stringify(event)}`;
-}
-
-/* ---------- Charts (Lightweight Charts) ---------- */
-function makeCandleChart(container, data = [], extras = {}) {
-
-  if (!container) return null;
-
-  const rows = Array.isArray(data) ? data.filter(Boolean) : [];
-
-  if (!rows.length) return null;
-
-
-
-  const theme = {
-
-    text: "rgba(245,247,251,0.88)",
-
-    grid: "rgba(255,255,255,0.06)",
-
-    up: "rgba(61,220,145,0.92)",
-
-    down: "rgba(246,104,117,0.9)",
-
-    volumeUp: "rgba(61,220,145,0.3)",
-
-    volumeDown: "rgba(246,104,117,0.3)",
-
-    accent: "rgba(91,168,247,0.65)",
-
-  };
-
-
-
-  const chart = LightweightCharts.createChart(container, {
-
-    layout: {
-
-      background: { color: "transparent" },
-
-      textColor: theme.text,
-
-      fontSize: 12,
-
-      fontFamily: "Inter, 'Segoe UI', sans-serif",
-
-    },
-
-    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.28 } },
-
-    timeScale: {
-      borderVisible: false,
-      fixLeftEdge: true,
-      timeVisible: true,
-      secondsVisible: false,
-    },
-
-    grid: {
-
-      vertLines: { color: theme.grid, style: LightweightCharts.LineStyle.Dotted },
-
-      horzLines: { color: theme.grid, style: LightweightCharts.LineStyle.Dotted },
-
-    },
-
-    crosshair: {
-
-      mode: LightweightCharts.CrosshairMode.Normal,
-
-      vertLine: {
-
-        color: "rgba(255,255,255,0.2)",
-
-        labelBackgroundColor: "rgba(5,7,10,0.75)",
-
-      },
-
-      horzLine: {
-
-        color: "rgba(255,255,255,0.2)",
-
-        labelBackgroundColor: "rgba(5,7,10,0.75)",
-
-      },
-
-    },
-
-  });
-
-
-
-  const timeValue = rows.map((d) => ({
-
-    time: isoToSec(d.timestamp),
-
-    open: Number(d.open),
-
-    high: Number(d.high),
-
-    low: Number(d.low),
-
-    close: Number(d.close),
-
-    volume: Number(d.volume ?? 0),
-
-  }));
-
-
-
-  const closeSeries = timeValue.map((d) => ({ time: d.time, value: d.close }));
-
-
-
-  const trajectory = chart.addAreaSeries({
-
-    lineColor: theme.accent,
-
-    topColor: "rgba(91,168,247,0.24)",
-
-    bottomColor: "rgba(91,168,247,0.02)",
-
-    lineWidth: 2,
-
-    crosshairMarkerVisible: true,
-
-  });
-
-  trajectory.setData(closeSeries);
-
-
-
-  const highSeries = chart.addLineSeries({
-
-    color: "rgba(61,220,145,0.32)",
-
-    lineWidth: 1,
-
-    lineStyle: LightweightCharts.LineStyle.Dotted,
-
-    priceLineVisible: false,
-
-  });
-
-  highSeries.setData(timeValue.map((d) => ({ time: d.time, value: d.high })));
-
-
-
-  const lowSeries = chart.addLineSeries({
-
-    color: "rgba(246,104,117,0.32)",
-
-    lineWidth: 1,
-
-    lineStyle: LightweightCharts.LineStyle.Dotted,
-
-    priceLineVisible: false,
-
-  });
-
-  lowSeries.setData(timeValue.map((d) => ({ time: d.time, value: d.low })));
-
-
-
-  const candle = chart.addCandlestickSeries({
-
-    upColor: theme.up,
-
-    downColor: theme.down,
-
-    wickUpColor: theme.up,
-
-    wickDownColor: theme.down,
-
-    borderUpColor: theme.up,
-
-    borderDownColor: theme.down,
-
-    borderVisible: true,
-
-    priceLineVisible: false,
-
-  });
-
-  candle.setData(timeValue.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
-
-
-
-  const volumeSeries = chart.addHistogramSeries({
-
-    priceFormat: { type: "volume" },
-
-    priceScaleId: "",
-
-    scaleMargins: { top: 0.9, bottom: 0 },
-
-  });
-
-  const volumeScale = Number.isFinite(extras.volumeScale) ? extras.volumeScale : 0.28;
-  volumeSeries.setData(
-    timeValue.map(({ time, volume, open, close }) => ({
-      time,
-      value: Math.max(0, (Number(volume) || 0) * volumeScale),
-      color: close >= open ? theme.volumeUp : theme.volumeDown,
-    })),
-  );
-
-
-  const { baselinePrice, projectedPrice, currentPrice, terminalHigh, terminalLow } = extras;
-
-  const addLine = (price, color, title) => {
-
-    if (!Number.isFinite(price)) return;
-
-    candle.createPriceLine({
-
-      price,
-
-      color,
-
-      lineWidth: 2,
-
-      lineStyle: LightweightCharts.LineStyle.Dashed,
-
-      axisLabelVisible: true,
-
-      title,
-
-    });
-
-  };
-
-  addLine(currentPrice, "rgba(255,255,255,0.9)", "Spot");
-
-  addLine(baselinePrice, "rgba(255,255,255,0.35)", "Baseline");
-
-  addLine(projectedPrice, theme.up, "Projected");
-
-  addLine(terminalHigh, "rgba(61,220,145,0.45)", "Ceiling");
-
-  addLine(terminalLow, "rgba(246,104,117,0.45)", "Floor");
-
-
-
-  const ro = new ResizeObserver(() => {
-
-    chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-
-  });
-
-  ro.observe(container);
-
-  chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
-
-  chart.timeScale().fitContent();
-
-  return chart;
-
-}
-
-
-
-/* ---------- Renderers ---------- */
-function renderImpacts(payload) {
-
-  const impactsHost = q("#impacts");
-
-  const generatedAt = q("#generatedAt");
-
-  const empty = q("#impactsEmpty");
-
-  if (!impactsHost || !generatedAt || !empty) return;
-
-
-
-  impactsHost.innerHTML = "";
-
-  if (!payload || !payload.impacts || payload.impacts.length === 0) {
-
-    empty.classList.remove("is-hidden");
-
-    generatedAt.textContent = "";
-
-    return;
-
-  }
-
-
-
-  empty.classList.add("is-hidden");
-
-  generatedAt.textContent = `Generated: ${payload.generated_at}`;
-
-
-
-  payload.impacts.forEach((impact) => {
-
-    const card = document.createElement("div");
-
-    card.className = "impact-card";
-
-
-
-    const baseline = Number(impact.baseline_price ?? impact.projection?.[0]?.close ?? 0);
-
-    const projected = Number(impact.projected_price ?? baseline);
-
-    const current = Number(impact.current_price ?? baseline);
-
-    const projectionPoints = Array.isArray(impact.projection) ? impact.projection.filter(Boolean) : [];
-
-    const lastPoint = projectionPoints.length ? projectionPoints[projectionPoints.length - 1] : null;
-
-
-
-    const terminalHigh = Number(lastPoint?.high ?? projected);
-
-    const terminalLow = Number(lastPoint?.low ?? projected);
-
-    const terminalMid = Number(lastPoint?.close ?? projected);
-
-
-
-    const projectedDelta = baseline ? ((projected - baseline) / baseline) * 100 : 0;
-
-    const currentDelta = baseline ? ((current - baseline) / baseline) * 100 : 0;
-
-    const terminalDelta = baseline ? ((terminalMid - baseline) / baseline) * 100 : 0;
-
-
-
-    const hasBand = Number.isFinite(terminalLow) && Number.isFinite(terminalHigh);
-
-    const bandLabel = hasBand ? `${formatPrice(terminalLow)} - ${formatPrice(terminalHigh)}` : "N/A";
-
-    const bandDeltaClass = Number.isFinite(terminalDelta)
-
-      ? terminalDelta >= 0
-
-        ? "positive"
-
-        : "negative"
-
-      : "muted";
-
-    const bandDeltaLabel = Number.isFinite(terminalDelta) ? `${formatNumber(terminalDelta)}% avg` : "N/A";
-
-
-
-    const header = document.createElement("div");
-
-    header.className = "impact-header";
-
-    header.innerHTML = `
-      <div class="impact-title">
-        <div class="impact-heading">
-          <span class="impact-ticker">${escapeHtml(impact.ticker)}</span>
-          <span class="impact-name">${escapeHtml(resolveTickerName(impact.ticker))}</span>
-        </div>
-        <div class="impact-meta-block">
-          <span class="impact-score ${impact.score >= 0 ? "positive" : "negative"}">${formatScore(impact.score)}</span>
-          <span class="impact-pts">${projectionPoints.length} pts</span>
-        </div>
-        <div class="impact-sparkline" data-sparkline></div>
-      </div>
-      <div class="price-metrics">
-        <div class="price-block spot">
-          <label>Spot</label>
-          <strong>${formatPrice(current)}</strong>
-          <span class="${currentDelta >= 0 ? "positive" : "negative"}">${formatNumber(currentDelta)}%</span>
-        </div>
-        <div class="price-block baseline">
-          <label>Baseline</label>
-          <strong>${formatPrice(baseline)}</strong>
-          <span class="muted">Ref</span>
-        </div>
-        <div class="price-block ${projectedDelta >= 0 ? "positive" : "negative"}">
-          <label>Projected</label>
-          <strong>${formatPrice(projected)}</strong>
-          <span>${formatNumber(projectedDelta)}%</span>
-        </div>
-        <div class="price-block band">
-          <label>Event band</label>
-          <strong>${bandLabel}</strong>
-          <span class="delta ${bandDeltaClass}">${bandDeltaLabel}</span>
-        </div>
-      </div>`;
-
-const copyBtn = document.createElement("button");
-
-    copyBtn.className = "bp5-button bp5-small bp5-minimal bp5-icon-clipboard";
-
-    copyBtn.title = "Copy JSON";
-
-    copyBtn.addEventListener("click", () => {
-
-      navigator.clipboard.writeText(JSON.stringify(impact, null, 2));
-
-      Toaster.push({ title: `Copied ${impact.ticker} payload`, level: "info" });
-
-    });
-
-    header.querySelector(".impact-meta-block")?.appendChild(copyBtn);
-
-    const sparklineHost = header.querySelector("[data-sparkline]");
-    if (sparklineHost) {
-      sparklineHost.innerHTML = createSparklineSvg(projectionPoints, baseline);
-    }
-
-    card.appendChild(header);
-
-
-
-    const chartWrap = document.createElement("div");
-
-    chartWrap.className = "chart";
-
-    card.appendChild(chartWrap);
-
-
-
-    if (Array.isArray(impact.orders) && impact.orders.length) {
-
-      const ordersWrap = document.createElement("div");
-
-      ordersWrap.className = "orders";
-
-      const rows = impact.orders
-
-        .map((order) => {
-
-          const sideClass = order.side === "BUY" ? "buy" : "sell";
-
-          return `
-
-          <tr>
-
-            <td>${escapeHtml(order.agent_id)}</td>
-
-            <td class="order-side ${sideClass}">${escapeHtml(order.side)}</td>
-
-            <td>${Number(order.qty).toFixed(2)}</td>
-
-            <td>${escapeHtml(order.order_type || "MKT")}</td>
-
-            <td>${order.price_limit != null ? Number(order.price_limit).toFixed(2) : "-"}</td>
-
-            <td>${escapeHtml(order.time_in_force || "-")}</td>
-
-          </tr>`;
-
-        })
-
-        .join("");
-
-      ordersWrap.innerHTML = `
-
-        <h4 class="orders-title">Orders</h4>
-
-        <table>
-
-          <thead><tr><th>Agent</th><th>Side</th><th>Qty</th><th>Type</th><th>Limit</th><th>TIF</th></tr></thead>
-
-          <tbody>${rows}</tbody>
-
-        </table>`;
-
-      card.appendChild(ordersWrap);
-
-    }
-
-
-
-    const preview = document.createElement("div");
-
-    preview.className = "projection-preview";
-
-    const previewSlice = projectionPoints.slice(0, 6);
-
-    const suffix = projectionPoints.length > previewSlice.length ? "\n..." : "";
-
-    preview.textContent = JSON.stringify(previewSlice, null, 2) + suffix;
-
-    card.appendChild(preview);
-
-
-
-    impactsHost.appendChild(card);
-
-
-
-    if (projectionPoints.length) {
-
-      makeCandleChart(chartWrap, projectionPoints, {
-        baselinePrice: baseline,
-        projectedPrice: projected,
-        currentPrice: current,
-        terminalHigh,
-        terminalLow,
-        volumeScale: 0.24,
-      });
-
-    }
-
-  });
-
-}
-
-
-
-function makeFeedItem(event) {
-  const el = document.createElement("div");
-  el.className = "feed-item";
-  const timestamp = event.timestamp || event.ts || new Date().toISOString();
-  const summary = summarizeEvent(event);
-  el.innerHTML = `<span class="ts">${escapeHtml(timestamp)}</span><code>${escapeHtml(summary)}</code>`;
-  el.title = JSON.stringify(event, null, 2);
-  return el;
-}
-
 function renderRecent(items) {
   const host = q("#recent");
   const empty = q("#recentEmpty");
@@ -976,7 +574,7 @@ async function onRunScenario() {
   const runBtn = q("#runBtn");
   const status = q("#runStatus");
   if (runBtn) runBtn.disabled = true;
-  if (status) status.textContent = "Runningâ€¦";
+  if (status) status.textContent = "RunningÃ¢â‚¬Â¦";
   try {
     const res = await API.scenario(text, steps);
     renderImpacts(res);
@@ -1059,7 +657,7 @@ function updateScenarioSummary(payload) {
     const parts = [];
     if (topPositive) parts.push(`Top positive: ${topPositive.ticker} ${formatScore(topPositive.score)}`);
     if (topNegative) parts.push(`Top negative: ${topNegative.ticker} ${formatScore(topNegative.score)}`);
-    summaryNarrative.textContent = parts.join(" · ") || "Balanced response across agents.";
+    summaryNarrative.textContent = parts.join(" Â· ") || "Balanced response across agents.";
   }
 
   if (positiveList) {

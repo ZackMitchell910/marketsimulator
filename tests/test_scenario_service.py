@@ -47,6 +47,10 @@ class TestScenarioService(unittest.TestCase):
             self.assertGreater(impact.baseline_price, 0)
             self.assertGreater(impact.projected_price, 0)
             self.assertGreater(impact.current_price, 0)
+            self.assertIsInstance(impact.analogs, list)
+            self.assertIsInstance(impact.news, list)
+        with_analogs = [impact for impact in impacts if impact.analogs]
+        self.assertTrue(with_analogs, "Expected at least one impact to surface analog events")
 
 
 if __name__ == "__main__":

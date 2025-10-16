@@ -1,0 +1,99 @@
+[
+  {
+    "id": "2023-11-21_NVDA_EARNINGS",
+    "ticker": "NVDA",
+    "title": "NVIDIA delivers record data center earnings",
+    "category": "earnings",
+    "date": "2023-11-21",
+    "summary": "Q3 FY24 print smashed guidance as hyperscale AI demand accelerated; stock rallied double digits post-report.",
+    "tags": ["ai", "earnings beat", "semiconductors"],
+    "drift": 0.126,
+    "vol": 0.042,
+    "skew": 0.38,
+    "kurtosis": 4.9,
+    "news": [
+      "https://www.cnbc.com/2023/11/21/nvidia-record-quarter-ai-demand.html",
+      "https://www.bloomberg.com/news/articles/2023-11-22/nvidia-surges-after-ai-demand-lifts-quarter"
+    ]
+  },
+  {
+    "id": "2022-08-24_JACKSON_HOLE",
+    "ticker": "TLT",
+    "title": "Fed chair warns of prolonged restrictive policy at Jackson Hole",
+    "category": "macro",
+    "date": "2022-08-24",
+    "summary": "Jerome Powell signalled higher-for-longer rates, sparking a broad risk-off move across equities and rates.",
+    "tags": ["fed", "policy", "macro"],
+    "drift": -0.035,
+    "vol": 0.028,
+    "skew": -0.42,
+    "kurtosis": 4.1,
+    "news": [
+      "https://www.reuters.com/markets/us/feds-powell-warns-of-pain-to-come-in-fight-against-inflation-2022-08-26/"
+    ]
+  },
+  {
+    "id": "2020-03-09_OIL_PRICE_WAR",
+    "ticker": "XLE",
+    "title": "Oil price war triggers energy sector rout",
+    "category": "geopolitical",
+    "date": "2020-03-09",
+    "summary": "Saudi-Russia price war led to a historic crude collapse, hammering energy equities and credit spreads.",
+    "tags": ["oil", "energy", "geopolitics"],
+    "drift": -0.178,
+    "vol": 0.096,
+    "skew": -0.68,
+    "kurtosis": 5.7,
+    "news": [
+      "https://www.wsj.com/articles/oil-prices-plunge-after-saudis-launch-price-war-11583770293"
+    ]
+  },
+  {
+    "id": "2021-01-06_CAPITOL_UNREST",
+    "ticker": "RTY",
+    "title": "Capitol unrest heightens political risk",
+    "category": "geopolitical",
+    "date": "2021-01-06",
+    "summary": "Political turmoil introduced short-lived volatility; defensives outperformed cyclicals as risk premium widened.",
+    "tags": ["politics", "risk", "us"],
+    "drift": -0.021,
+    "vol": 0.035,
+    "skew": -0.12,
+    "kurtosis": 3.6,
+    "news": [
+      "https://www.ft.com/content/b858307d-c5a0-4c08-9a8a-1f6934400324"
+    ]
+  },
+  {
+    "id": "2022-02-24_RUSSIA_UKRAINE",
+    "ticker": "LMT",
+    "title": "Russian invasion of Ukraine",
+    "category": "geopolitical",
+    "date": "2022-02-24",
+    "summary": "Hot conflict drove defence complex higher while global equities sold off; energy rallied on supply fears.",
+    "tags": ["war", "defence", "energy"],
+    "drift": 0.084,
+    "vol": 0.051,
+    "skew": 0.31,
+    "kurtosis": 4.4,
+    "news": [
+      "https://www.nytimes.com/2022/02/24/world/europe/russia-ukraine-invasion.html"
+    ]
+  },
+  {
+    "id": "2023-07-26_META_AI",
+    "ticker": "META",
+    "title": "Meta highlights AI monetisation momentum",
+    "category": "earnings",
+    "date": "2023-07-26",
+    "summary": "Meta's results revived growth narrative as AI investments lifted engagement and ad pricing.",
+    "tags": ["earnings", "ai", "social media"],
+    "drift": 0.089,
+    "vol": 0.037,
+    "skew": 0.22,
+    "kurtosis": 4.0,
+    "news": [
+      "https://www.theverge.com/2023/7/26/23805757/meta-ai-earnings-results-q2-2023"
+    ]
+  }
+]

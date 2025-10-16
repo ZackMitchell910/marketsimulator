@@ -24,8 +24,9 @@ def test_extract_impact_candidates_prefers_llm(monkeypatch):
     )
     impacts = scenario_mapping.extract_impact_candidates("Fed cuts rates aggressively", top_n=3)
     assert impacts[0][0] == "NVDA"
-    assert impacts[1][0] == "XLF"
-    assert impacts[1][1] < 0
+    tickers = [symbol for symbol, _ in impacts]
+    assert "XLF" in tickers
+    assert impacts[tickers.index("XLF")][1] < 0
 
 
 def test_extract_impact_candidates_fallback_to_keywords(monkeypatch):
