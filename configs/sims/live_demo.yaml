@@ -1,0 +1,33 @@
+mode: backtest
+agents: [fund, retail, ark]
+symbols: [SPY, NVDA, ARKK]
+tick_ms: 1000
+history_csv: "data/SPY_daily.csv"
+history_col: "close"
+providers:
+  polygon: true
+  coinbase: true
+  api_key: "9tM7EtZcAXBu4P6ZjkbVpf3WFRgc1G2Q"
+  market: mixed
+max_ticks: 120 # optional stop after 5min
+dealer:
+  k_spread: 1.0
+  k_vol: 2.0
+  k_inv: 0.6
+  inv_cap: 1500
+  k_size: 0.6
+  lot_min: 1
+  lot_max: 200
+strategy:
+  fast: 5
+  slow: 20
+  cooldown_sec: 5
+  risk_per_trade: 0.01
+  allow_short: false
+  max_pos: 200
+broker:
+  participation: 0.10
+  slip_k: 0.25
+  impact_k: 0.05
+account:
+  cash: 100000

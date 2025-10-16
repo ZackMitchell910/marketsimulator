@@ -1,0 +1,8 @@
+# configs/realtime_crypto.yaml
+stocks: []
+cryptos:
+  - BTC-USD
+  - ETH-USD
+agents:
+  retail: true
+  dealer: false

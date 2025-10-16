@@ -1,0 +1,119 @@
+name: top_tier
+universe:
+  - SPY
+  - NVDA
+start: "2024-01-02"
+end: "2024-02-02"
+horizon: daily
+
+exec_model: LOB
+
+agents:
+  - dealer-avs:
+      symbol: SPY
+  - pov-nvda:
+      symbol: NVDA
+      side: BUY
+      pov: 0.12
+      max_clip: 1500
+  - rebalance-eod:
+      basket:
+        - SPY
+        - NVDA
+      schedule: daily_close
+      target_weights:
+        SPY: 0.7
+        NVDA: 0.3
+      adv_frac: 0.02
+      exec_profile: VWAP
+      profile_shape: bell
+  - retail-momo:
+      symbol: NVDA
+      lookback_ticks: 10
+      up_bps: 30
+      stop_bps: 80
+      tp_bps: 120
+      clip_lognorm:
+        mean: 800
+        sigma: 0.7
+      latency_ms: 250
+  - retail-dip:
+      symbol: SPY
+      dd_bps: 150
+      rr_take: 1.6
+      clip_lognorm:
+        mean: 1200
+        sigma: 0.6
+  - retail-stops:
+      symbol: NVDA
+      cluster_bps: 90
+      density: 0.6
+  - retail-herd:
+      symbol: NVDA
+      lookback_ticks: 12
+      k_herd: 0.8
+      decay: 0.9
+      clip_lognorm:
+        mean: 600
+        sigma: 0.5
+
+slippage_bps: 1.5
+tick_ms: 250
+
+adv_usd:
+  SPY: 2.5e10
+  NVDA: 1.8e10
+
+dealer:
+  k_sigma: 1.1
+  gamma: 2.0e-6
+  k_inv: 0.0018
+  min_spread_bp: 1.5
+  max_spread_bp: 80
+  inventory_usd_cap: 5000000
+  post_depth_levels: 3
+  fade_after_adverse_fill_bp: 10
+
+regimes:
+  ewma_fast: 8
+  ewma_slow: 21
+  sigma_window: 20
+  thresholds:
+    sigma_hi: 0.45
+    sigma_med: 0.25
+    slope_hi: 0.8
+
+regime_params:
+  bull:
+    dealer:
+      min_spread_bp: 1.5
+      max_spread_bp: 40
+    pov:
+      pov: 0.08
+    retail:
+      momo_up_bps: 20
+  bear:
+    dealer:
+      min_spread_bp: 2.5
+      max_spread_bp: 70
+    pov:
+      pov: 0.06
+    retail:
+      momo_up_bps: 35
+  chop:
+    dealer:
+      min_spread_bp: 2.0
+      max_spread_bp: 60
+    pov:
+      pov: 0.1
+  crisis:
+    dealer:
+      min_spread_bp: 6.0
+      max_spread_bp: 120
+    pov:
+      pov: 0.03
+    retail:
+      momo_up_bps: 60
+
+reporting:
+  microstructure: true

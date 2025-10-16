@@ -1,0 +1,26 @@
+mode: live
+symbols: [SPY, NVDA]
+tick_ms: 1000
+providers:
+  yfinance: true     # (temporary live-ish feed; replace with polygon: true later)
+dealer:
+  k_spread: 1.0
+  k_vol: 2.0
+  k_inv: 0.6
+  inv_cap: 1500
+  k_size: 0.6
+  lot_min: 1
+  lot_max: 200
+strategy:
+  fast: 5
+  slow: 20
+  cooldown_sec: 5
+  risk_per_trade: 0.01
+  allow_short: false
+  max_pos: 200
+broker:
+  participation: 0.10
+  slip_k: 0.25
+  impact_k: 0.05
+account:
+  cash: 100000

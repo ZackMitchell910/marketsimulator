@@ -1,0 +1,10 @@
+# configs/realtime_stocks.yaml
+stocks:
+  - SPY
+  - NVDA
+  - AAPL
+  - TSLA
+cryptos: []
+agents:
+  retail: true
+  dealer: true

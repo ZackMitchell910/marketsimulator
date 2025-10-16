@@ -1,0 +1,17 @@
+name: "daily_backtest_spy_nvda"
+horizon: "daily"     # "daily" uses daily bars; use "intraday" to switch to 1-minute
+start: "2023-01-01"
+end:   "2025-01-01"
+
+universe:
+  - SPY
+  - NVDA
+  - AAPL
+  - TSLA
+
+agents:
+  - fund-global
+  - retail-global
+  - dealer-gamma
+
+slippage_bps: 0.0
